@@ -36,6 +36,34 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+function auth(req, res, next) {
+	console.log(req.headers);
+	var authHeader = req.headers.authorization;
+	if (!authHeader) {
+		var err = new Error('You are not authenticated!');
+		res.setHeader('WWW-Authenticate', 'Basic');
+		err.status = 401;
+		next(err);
+		return;
+	}
+	//new Buffer(string) is deprecated
+	var auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); // 1st split authHeader using ' '(space) into 2 arrays, the array[0] is  'Basic' and the array[1] contains base64 encoded string which contains the username and password; 2nd split: 'username:password' is split into 2 arrays by ':'
+	var user = auth[0];
+	var pass = auth[1];
+	if (user == 'pineapple' && pass == 'yellow') {
+		//in this excercise we use encoded username and password
+		next(); //authorized
+	} else {
+		var err = new Error('You are not authenticated!');
+		res.setHeader('WWW-Authenticate', 'Basic');
+		err.status = 401;
+		next(err);
+	}
+}
+
+app.use(auth); //program will be authorized
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
