@@ -3,6 +3,8 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var session = require('express-session');
+var FileStore = require('session-file-store')(session);
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -36,12 +38,22 @@ app.use(logger('dev'));
 //body parser:
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser('12345-67890-12345-67890')); // any number
+// app.use(cookieParser('12345-67890-12345-67890')); // any number
+
+app.use(
+	session({
+		name: 'session-id',
+		secret: '12345-67890-12345-67890',
+		saveUninitialized: false,
+		resave: false,
+		store: new FileStore()
+	})
+);
 
 function auth(req, res, next) {
-	console.log(req.signedCookies);
+	console.log(req.session);
 
-	if (!req.signedCookies.user) {
+	if (!req.session.user) {
 		//user is not authorized yet
 		var authHeader = req.headers.authorization;
 		if (!authHeader) {
@@ -56,7 +68,7 @@ function auth(req, res, next) {
 		var user = auth[0];
 		var pass = auth[1];
 		if (user == 'pineapple' && pass == 'yellow') {
-			res.cookie('user', 'pineapple', { signed: true }); //set up the cookie //res.cookie(name,value)
+			req.session.user = 'pineapple'; //set up the session
 			next(); //authorized
 		} else {
 			var err = new Error('You are not authenticated!');
@@ -65,7 +77,7 @@ function auth(req, res, next) {
 			next(err);
 		}
 	} else {
-		if (req.signedCookies.user === 'pineapple') {
+		if (req.session.user === 'pineapple') {
 			next();
 		} else {
 			//not likely to happen
