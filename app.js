@@ -50,34 +50,21 @@ app.use(
 	})
 );
 
+//This two end points must before authentication function, so a user can reach these two end points without authentication, but any other end points needs authentication
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+
 function auth(req, res, next) {
 	console.log(req.session);
 
 	if (!req.session.user) {
 		//user is not authorized yet
-		var authHeader = req.headers.authorization;
-		if (!authHeader) {
-			var err = new Error('You are not authenticated!');
-			res.setHeader('WWW-Authenticate', 'Basic');
-			err.status = 401;
-			next(err);
-			return;
-		}
-		//new Buffer(string) is deprecated
-		var auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); // 1st split authHeader using ' '(space) into 2 arrays, the array[0] is  'Basic' and the array[1] contains base64 encoded string which contains the username and password; 2nd split: 'username:password' is split into 2 arrays by ':'
-		var user = auth[0];
-		var pass = auth[1];
-		if (user == 'pineapple' && pass == 'yellow') {
-			req.session.user = 'pineapple'; //set up the session
-			next(); //authorized
-		} else {
-			var err = new Error('You are not authenticated!');
-			res.setHeader('WWW-Authenticate', 'Basic');
-			err.status = 401;
-			next(err);
-		}
+		var err = new Error('You are not authenticated!');
+		err.status = 401;
+		return next(err);
 	} else {
-		if (req.session.user === 'pineapple') {
+		//req.session.user should = what we set in the users.js router.post('/login')
+		if (req.session.user === 'authenticated') {
 			next();
 		} else {
 			//not likely to happen
@@ -92,8 +79,6 @@ app.use(auth); //program will be authorized
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
 app.use('/dishes', dishRouter);
 app.use('/promotions', promoRouter);
 app.use('/leaders', leaderRouter);
