@@ -5,6 +5,8 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var session = require('express-session');
 var FileStore = require('session-file-store')(session);
+var passport = require('passport');
+var authenticate = require('./authenticate');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -50,6 +52,9 @@ app.use(
 	})
 );
 
+app.use(passport.initialize());
+app.use(passport.session());
+
 //This two end points must before authentication function, so a user can reach these two end points without authentication, but any other end points needs authentication
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
@@ -57,21 +62,14 @@ app.use('/users', usersRouter);
 function auth(req, res, next) {
 	console.log(req.session);
 
-	if (!req.session.user) {
-		//user is not authorized yet
+	if (!req.user) {
+		//user is not authorized yet //req.user is not present, authentication has not been done correctly
 		var err = new Error('You are not authenticated!');
-		err.status = 401;
-		return next(err);
+		err.status = 403;
+		next(err);
 	} else {
-		//req.session.user should = what we set in the users.js router.post('/login')
-		if (req.session.user === 'authenticated') {
-			next();
-		} else {
-			//not likely to happen
-			var err = new Error('Your are not authenticated!');
-			err.status = 401;
-			next(err);
-		}
+		//req.user is present, authentication has been done correctly
+		next();
 	}
 }
 
