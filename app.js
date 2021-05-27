@@ -7,6 +7,7 @@ var session = require('express-session');
 var FileStore = require('session-file-store')(session);
 var passport = require('passport');
 var authenticate = require('./authenticate');
+var config = require('./config');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -18,7 +19,8 @@ const mongoose = require('mongoose');
 
 const Dishes = require('./models/dishes');
 
-const url = 'mongodb://localhost:27017/conFusion';
+// const url = 'mongodb://localhost:27017/conFusion';
+const url = config.mongoUrl;
 const connect = mongoose.connect(url);
 
 connect.then(
@@ -42,40 +44,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // app.use(cookieParser('12345-67890-12345-67890')); // any number
 
-app.use(
-	session({
-		name: 'session-id',
-		secret: '12345-67890-12345-67890',
-		saveUninitialized: false,
-		resave: false,
-		store: new FileStore()
-	})
-);
-
 app.use(passport.initialize());
-app.use(passport.session());
 
 //This two end points must before authentication function, so a user can reach these two end points without authentication, but any other end points needs authentication
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
-function auth(req, res, next) {
-	console.log(req.session);
+// app.use(auth); //program will be authorized: when I configured this authentication, this authentication was applied to every single incoming request, used in every router
 
-	if (!req.user) {
-		//user is not authorized yet //req.user is not present, authentication has not been done correctly
-		var err = new Error('You are not authenticated!');
-		err.status = 403;
-		next(err);
-	} else {
-		//req.user is present, authentication has been done correctly
-		next();
-	}
-}
-
-app.use(auth); //program will be authorized
-
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'))); //public folder is open for anybody to access
 
 app.use('/dishes', dishRouter);
 app.use('/promotions', promoRouter);

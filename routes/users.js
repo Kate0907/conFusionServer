@@ -1,6 +1,7 @@
 var express = require('express');
 var User = require('../models/user'); // import user Model
 var passport = require('passport');
+var authenticate = require('../authenticate');
 
 var router = express.Router();
 // the middleware body parser is deprecated,use express.json()
@@ -34,9 +35,11 @@ router.post('/signup', (req, res, next) => {
 });
 
 router.post('/login', passport.authenticate('local'), (req, res) => {
+	//passport.authenticat will verify user, if successful, will continue;otherwise will return err say user not authenticated
+	var token = authenticate.getToken({ _id: req.user._id }); //Create a token; getToken takes a parameter user's id as payload //req.user._id will present, since when the passport.authenticate('local') successfully authenticates the user, this is going to load up the user property onto the request message.
 	res.statusCode = 200;
 	res.setHeader('Content-Type', 'application/json');
-	res.json({ success: true, status: 'You are successfully logged in!' });
+	res.json({ success: true, token: token, status: 'You are successfully logged in!' }); //return the token just created as the 2nd property of res.json
 });
 
 router.get('/logout', (req, res) => {
