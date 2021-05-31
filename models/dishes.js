@@ -15,9 +15,10 @@ const commentSchema = new Schema(
 			type: String,
 			required: true
 		},
+		// author field has connection to User model.We can use mongoose populate to populate this information into our dishes document
 		author: {
-			type: String,
-			required: true
+			type: mongoose.Schema.Types.ObjectId,
+			ref: 'User' //author will store a reference to the ID of the user document
 		}
 	},
 	{

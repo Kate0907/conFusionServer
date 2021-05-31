@@ -15,6 +15,7 @@ dishRouter
 	.route('/')
 	.get((req, res, next) => {
 		Dishes.find({})
+			.populate('comments.author') //when the dishes document has been constructed to send  back the reply to the user, we are going to popultae the author field inside there from the user document in there. So this call to the populate will ensure the other field will be populated with the information as required.
 			.then(
 				(dishes) => {
 					res.statusCode = 200;
@@ -61,6 +62,7 @@ dishRouter
 	.route('/:dishId')
 	.get((req, res, next) => {
 		Dishes.findById(req.params.dishId)
+			.populate('comments.author')
 			.then(
 				(dish) => {
 					res.statusCode = 200;
@@ -111,12 +113,13 @@ dishRouter
 	.route('/:dishId/comments')
 	.get((req, res, next) => {
 		Dishes.findById(req.params.dishId)
+			.populate('comments.author') //populate the field you want to populate. Instead of return an objectId, it will return a full user object
 			.then(
 				(dish) => {
 					if (dish != null) {
 						res.statusCode = 200;
 						res.setHeader('Content-Type', 'application/json');
-						res.json(dish.comments);
+						res.json(dish.comments); //after populate('comments.author), res.json(dish.comments) will including a full user object in author field
 					} else {
 						err = new Error('Dish ' + req.params.dishId + ' not found');
 						err.status = 404;
@@ -126,15 +129,17 @@ dishRouter
 				(err) => next(err)
 			)
 			.catch((err) => next(err));
-	})
+	}) //Create a comment to a dish
 	.post(authenticate.verifyUser, (req, res, next) => {
 		Dishes.findById(req.params.dishId)
 			.then(
 				(dish) => {
 					if (dish != null) {
-						dish.comments.push(req.body); //add comment
+						req.body.author = req.user._id; //depending on which user is posting the comment, we can immediately populate the author field.Since we have done the verify user here for the post, we would have already loaded in the req.user into the request object. so we can obtain user id by saying req.user._ID.So that users information is automatically obtained from req.user.
+						dish.comments.push(req.body); //add comment(including author field)
 						dish.save().then(
 							(dish) => {
+								Dishes.findById(dish._id).populate('comments.author'); //after populate, res.json(dish) will show a full author information
 								res.statusCode = 200;
 								res.setHeader('Content-Type', 'application/json');
 								res.json(dish);
@@ -187,6 +192,7 @@ dishRouter
 	.route('/:dishId/comments/:commentId')
 	.get((req, res, next) => {
 		Dishes.findById(req.params.dishId)
+			.populate('comments.author')
 			.then(
 				(dish) => {
 					// dish exist and dish comments exist
@@ -227,9 +233,12 @@ dishRouter
 						}
 						dish.save().then(
 							(dish) => {
-								res.statusCode = 200;
-								res.setHeader('Content-Type', 'application/json');
-								res.json(dish);
+								//need to do one more search because need to populate the comments.author
+								Dishes.findById(dish._id).populate('comments.author').then((dish) => {
+									res.statusCode = 200;
+									res.setHeader('Content-Type', 'application/json');
+									res.json(dish);
+								});
 							},
 							(err) => next(err)
 						);
@@ -255,9 +264,12 @@ dishRouter
 						dish.comments.id(req.params.commentId).remove();
 						dish.save().then(
 							(dish) => {
-								res.statusCode = 200;
-								res.setHeader('Content-Type', 'application/json');
-								res.json(dish);
+								//need to do one more search because need to populate the comments.author
+								Dishes.findById(dish._id).populate('comments.author').then((dish) => {
+									res.statusCode = 200;
+									res.setHeader('Content-Type', 'application/json');
+									res.json(dish);
+								});
 							},
 							(err) => next(err)
 						);
