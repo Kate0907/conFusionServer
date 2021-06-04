@@ -14,6 +14,7 @@ var usersRouter = require('./routes/users');
 var dishRouter = require('./routes/dishRouter');
 var promoRouter = require('./routes/promoRouter');
 var leaderRouter = require('./routes/leaderRouter');
+var uploadRouter = require('./routes/uploadRouter');
 
 const mongoose = require('mongoose');
 
@@ -33,6 +34,16 @@ connect.then(
 );
 
 var app = express();
+
+//redirect all http to https
+app.all('*', (req, res, next) => {
+	if (req.secure) {
+		//if incoming request is already a secure request, the request object will carry this flag called 'secure' which will be set to 'true'
+		return next();
+	} else {
+		res.redirect(307, 'https://' + req.hostname + ':' + app.get('secPort') + req.url); //req.url contain rest of the path except the hostname and the port number
+	}
+});
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -54,9 +65,11 @@ app.use('/users', usersRouter);
 
 app.use(express.static(path.join(__dirname, 'public'))); //public folder is open for anybody to access
 
+//API endpoint:
 app.use('/dishes', dishRouter);
 app.use('/promotions', promoRouter);
 app.use('/leaders', leaderRouter);
+app.use('/imageUpload', uploadRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
