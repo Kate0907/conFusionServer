@@ -2,14 +2,14 @@ var express = require('express');
 var User = require('../models/user'); // import user Model
 var passport = require('passport');
 var authenticate = require('../authenticate');
-
+var cors = require('./cors');
 var router = express.Router();
 // the middleware body parser is deprecated,use express.json()
 router.use(express.json());
 router.use(express.urlencoded({ extended: true })); // can get the form data
 
 /* GET users listing. */
-router.get('/', authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
+router.get('/', cors.corsWithOptions, authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
 	User.find({})
 		.then(
 			(users) => {
@@ -23,7 +23,7 @@ router.get('/', authenticate.verifyUser, authenticate.verifyAdmin, (req, res, ne
 });
 
 //Sign up new users:
-router.post('/signup', (req, res, next) => {
+router.post('/signup', cors.corsWithOptions, (req, res, next) => {
 	//make sure username not exist in database( findOne(query, projection) example: db.restaurents.findOne({"cuisine" : "Italian"}, {_id:0, grades:0}) => will return the first one restaurents with "cuisine" is "Italian", but without return '_id' and 'grades' fields. )
 	User.register(new User({ username: req.body.username }), req.body.password, (err, user) => {
 		//a callback function: (err,user) as 2 callback values
@@ -61,7 +61,7 @@ router.post('/signup', (req, res, next) => {
 	});
 });
 
-router.post('/login', passport.authenticate('local'), (req, res) => {
+router.post('/login', cors.corsWithOptions, passport.authenticate('local'), (req, res) => {
 	//passport.authenticat will verify user, if successful, will continue;otherwise will return err say user not authenticated
 	var token = authenticate.getToken({ _id: req.user._id }); //Create a token; getToken takes a parameter user's id as payload //req.user._id will present, since when the passport.authenticate('local') successfully authenticates the user, this is going to load up the user property onto the request message.
 	res.statusCode = 200;
@@ -69,7 +69,7 @@ router.post('/login', passport.authenticate('local'), (req, res) => {
 	res.json({ success: true, token: token, status: 'You are successfully logged in!' }); //return the token just created as the 2nd property of res.json
 });
 
-router.get('/logout', (req, res) => {
+router.get('/logout', cors.corsWithOptions, (req, res) => {
 	//use 'get' since we don't need to send any information in the body
 	if (req.session) {
 		//session must exist, otherwise it's not logged in
@@ -80,6 +80,17 @@ router.get('/logout', (req, res) => {
 		var err = new Error('You are not logged in!');
 		err.status = 403;
 		next(err);
+	}
+});
+
+//sign in using facebook account(If the user is acknowledged by Facebook to be a legitimate user, then our express server will return a JSON web token to our client)
+router.get('/facebook/token', passport.authenticate('facebook-token'), (req, res) => {
+	if (req.user) {
+		//when we call passport.authenticate with facebook-token strategy, if it is successful, it would have loaded in the user into the request object,so you would have the user already loaded into the request object
+		var token = authenticate.getToken({ _id: req.user._id }); //create a JSON web token and return to client
+		res.statusCode = 200;
+		res.setHeader('Content-Type', 'application/json');
+		res.json({ success: true, token: token, status: 'You are successfully logged in!' });
 	}
 });
 
